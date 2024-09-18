@@ -1,11 +1,11 @@
 [package]
-name = "toktor-impl"
+name = "toktor_impl"
 author = "Daniele Cruciani <daniele@smartango.com>"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "toktor-impl"
+name = "toktor_impl"
 proc-macro = true
 
 [dependencies]
