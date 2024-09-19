@@ -78,7 +78,7 @@ impl RequestsVisorObj {
 
 // this is the way the handler boilerplate is created
 
-actor_handler!({pctl: &ProcessController, conf: &ServiceConf} => RequestsVisorObj, RequestsVisor, ReqVisorMsg);
+actor_handler!({conf: &ServiceConf} => RequestsVisorObj, RequestsVisor, ReqVisorMsg);
 
 
 impl RequestsVisor {
@@ -91,6 +91,7 @@ impl RequestsVisor {
         };
         let s = self.clone();
         tokio::spawn(async move {
+            // read below
             match toktor_send!(s, msg).await {
                 _ => println!()
             };
@@ -99,6 +100,8 @@ impl RequestsVisor {
     }
 }
 ```
+
+(See below about `toktor_send!(s, msg).await` )
 
 What really does:
 > `actor_handler!({conf: &ServiceConf} => RequestsVisorObj, RequestsVisor, ReqVisorMsg);`
@@ -133,6 +136,17 @@ and:
 toktor_send!(s, msg).await;
 ```
 
+Now `toktor_send!` is really `s.sender.send(msg)` where `s` is the handler
+
+## Concepts
+
+The point in this actor model implementation is to have a clonable Handler, so
+it owns just a property: `pub sender: ::tokio::sync::mpsc::Sender<Msg>`.
+
+One can add as many method are handly or usefull for readability, but the
+real staff are kept by the ActorObj, that is instanciated on first call of new.
+
+
 ## TODO
 
 This is a starting point, there is still some cut&paste code, like `fn run()` that is almost
@@ -142,6 +156,36 @@ Anyway this is not meant to be simple or to hide the message mechanism, also han
 is not async by design, meaning that it must be called sequencially for each message,
 this limitation can be surpassed by the use of `tokio::spawn(async ...)`,
 but it is a deliberate choice.
+
+
+### Some ideas
+
+Typically the ActorObject receive its internal state, someway, from the init stage.
+This can be a kind of constraint for the new method: it must have, in some form, all
+parameters needed to setup each property of the struct ActorObject.
+
+The problem is to keep enough freedom to define the new method as it is required
+(for example, a new method can take a struct as parameter but cherry-pick something
+from that struct by calling a specifc method on it, i.e. it receive Config and does
+Config.getMap() to get an cloned HashMap, then use it as internal property).
+
+For this reason I would not define a macro that automate actorobj fields and its new method.
+
+But it could be a good idea to map between `actorobj::new()`'s parameters and
+the `actorhandler::new()`'s parameters
+
+Something like:
+
+```
+#[toktormsg(ReqVisorMsg)]
+struct RequestsVisorObj {
+    // would make this not required
+    // receiver: mpsc::Receiver<ReqVisorMsg>,
+    conf: ServiceConf
+}
+```
+
+But still I do not know how to implement mapping between the `::new()s` methods
 
 
 ## Credits
